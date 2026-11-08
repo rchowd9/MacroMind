@@ -11,3 +11,11 @@ class Food:
     fats: float
     vitamins: dict
     dietaryFiber: float
+
+def calculating_total_calories(list_of_food):
+    total_calories = 0
+    for food in list_of_food:
+        total_calories += food.calories
+        return total_calories
+
+    
