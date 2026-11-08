@@ -11,6 +11,7 @@ class Food:
     fats: float
     vitamins: dict
     dietaryFiber: float
+    sugar: int
 
 def calculating_total_calories(list_of_food):
     total_calories = 0
