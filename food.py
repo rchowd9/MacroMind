@@ -9,4 +9,5 @@ class Food:
     protein: float
     carbohydrates: float
     fats: float
-    
+    vitamins: dict
+    dietaryFiber: float
