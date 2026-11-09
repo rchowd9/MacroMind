@@ -18,25 +18,34 @@ st.set_page_config(page_title="MacroMind", page_icon="🥗", layout="wide")
 st.title("MacroMind")
 st.caption("Track what you eat, understand your macros, and work toward your daily goal.")
 
-with st.sidebar:
-    st.header("Daily plan")
-    selected_date = st.date_input("Tracking date", value=date.today())
-    with st.form("goal_form"):
-        st.subheader("Daily goals")
-        calorie_goal = st.number_input("Calories", min_value=1, max_value=10000, value=2000, step=50)
-        protein_goal = st.number_input("Protein (g)", min_value=1, max_value=1000, value=150, step=5)
-        carbs_goal = st.number_input("Carbohydrates (g)", min_value=1, max_value=1000, value=250, step=5)
-        fats_goal = st.number_input("Fat (g)", min_value=1, max_value=1000, value=65, step=5)
-        save_goal = st.form_submit_button("Save daily goals", use_container_width=True)
-
 api = MacroMindAPI(
     base_url=setting("MACROMIND_API_URL", "http://127.0.0.1:8000"),
     token=setting("MACROMIND_API_TOKEN"),
 )
 
 try:
-    foods = api.list_foods()
     goal = api.get_goal()
+except APIError as error:
+    st.error(f"Could not load MacroMind data: {error}")
+    st.info(
+        "Start the Django backend with `python manage.py runserver` and configure "
+        "`MACROMIND_API_URL` and `MACROMIND_API_TOKEN`."
+    )
+    st.stop()
+
+with st.sidebar:
+    st.header("Daily plan")
+    selected_date = st.date_input("Tracking date", value=date.today())
+    with st.form("goal_form"):
+        st.subheader("Daily goals")
+        calorie_goal = st.number_input("Calories", min_value=1, max_value=10000, value=goal["calorie_goal"], step=50)
+        protein_goal = st.number_input("Protein (g)", min_value=1, max_value=1000, value=goal["protein_goal"], step=5)
+        carbs_goal = st.number_input("Carbohydrates (g)", min_value=1, max_value=1000, value=goal["carbs_goal"], step=5)
+        fats_goal = st.number_input("Fat (g)", min_value=1, max_value=1000, value=goal["fats_goal"], step=5)
+        save_goal = st.form_submit_button("Save daily goals", use_container_width=True)
+
+try:
+    foods = api.list_foods()
     meals = api.list_meals(selected_date)
 except APIError as error:
     st.error(f"Could not load MacroMind data: {error}")
@@ -151,7 +160,7 @@ with foods_tab:
         st.info("Your food library is empty.")
 
 with meals_tab:
-    st.subheader(f"Meals for {selected_date:%B %-d, %Y}")
+    st.subheader(f"Meals for {selected_date:%B %d, %Y}")
     if not meals:
         st.info("Nothing logged for this day yet.")
     for meal in meals:

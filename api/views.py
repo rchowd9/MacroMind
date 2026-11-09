@@ -6,6 +6,7 @@ from functools import wraps
 from typing import Any, Callable
 
 from django.conf import settings
+from django.db import IntegrityError
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
@@ -109,10 +110,8 @@ def foods(request: HttpRequest) -> JsonResponse:
         )
     except ValueError as error:
         return JsonResponse({"error": str(error)}, status=400)
-    except Exception as error:
-        if getattr(error, "is_integrity_error", False):
-            return JsonResponse({"error": "A food with that name already exists."}, status=400)
-        raise
+    except IntegrityError:
+        return JsonResponse({"error": "A food with that name already exists."}, status=400)
     return JsonResponse(food_data(food), status=201)
 
 
