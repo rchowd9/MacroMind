@@ -73,6 +73,31 @@ class MacroMindAPITests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_get_and_update_personal_measurements(self) -> None:
+        response = self.client.get("/api/profile/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"weight_kg": None, "height_cm": None})
+
+        payload = {"weight_kg": 72.5, "height_cm": 175.2}
+        response = self.client.put(
+            "/api/profile/", data=json.dumps(payload), content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), payload)
+        self.assertEqual(self.client.get("/api/profile/").json(), payload)
+
+    def test_reject_invalid_personal_measurements(self) -> None:
+        for payload in (
+            {"weight_kg": 0, "height_cm": 175},
+            {"weight_kg": 72, "height_cm": 301},
+            {"weight_kg": "not-a-number", "height_cm": 175},
+        ):
+            with self.subTest(payload=payload):
+                response = self.client.put(
+                    "/api/profile/", data=json.dumps(payload), content_type="application/json"
+                )
+                self.assertEqual(response.status_code, 400)
+
     def test_delete_meal(self) -> None:
         meal = MealEntry.objects.create(
             food=self.food, quantity_grams=100, date="2026-11-09"

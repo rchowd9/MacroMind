@@ -26,6 +26,12 @@ class MacroMindAPI:
     def update_goal(self, goal: dict[str, Any]) -> dict[str, Any]:
         return self._request("PUT", "/api/goal/", json=goal)
 
+    def get_profile(self) -> dict[str, Any]:
+        return self._request("GET", "/api/profile/")
+
+    def update_profile(self, profile: dict[str, Any]) -> dict[str, Any]:
+        return self._request("PUT", "/api/profile/", json=profile)
+
     def list_meals(self, tracking_date: date) -> list[dict[str, Any]]:
         return self._request("GET", "/api/meals/", params={"date": tracking_date.isoformat()})
 

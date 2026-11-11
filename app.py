@@ -25,6 +25,7 @@ api = MacroMindAPI(
 
 try:
     goal = api.get_goal()
+    profile = api.get_profile()
 except APIError as error:
     st.error(f"Could not load MacroMind data: {error}")
     st.info(
@@ -43,6 +44,23 @@ with st.sidebar:
         carbs_goal = st.number_input("Carbohydrates (g)", min_value=1, max_value=1000, value=goal["carbs_goal"], step=5)
         fats_goal = st.number_input("Fat (g)", min_value=1, max_value=1000, value=goal["fats_goal"], step=5)
         save_goal = st.form_submit_button("Save daily goals", use_container_width=True)
+    with st.form("profile_form"):
+        st.subheader("Personal measurements")
+        weight_kg = st.number_input(
+            "Weight (kg)",
+            min_value=1.0,
+            max_value=500.0,
+            value=profile["weight_kg"] or 70.0,
+            step=0.1,
+        )
+        height_cm = st.number_input(
+            "Height (cm)",
+            min_value=1.0,
+            max_value=300.0,
+            value=profile["height_cm"] or 170.0,
+            step=0.1,
+        )
+        save_profile = st.form_submit_button("Save measurements", use_container_width=True)
 
 try:
     foods = api.list_foods()
@@ -68,6 +86,13 @@ if save_goal:
         st.sidebar.success("Daily goals saved.")
     except APIError as error:
         st.sidebar.error(f"Could not save goals: {error}")
+
+if save_profile:
+    try:
+        profile = api.update_profile({"weight_kg": weight_kg, "height_cm": height_cm})
+        st.sidebar.success("Personal measurements saved.")
+    except APIError as error:
+        st.sidebar.error(f"Could not save measurements: {error}")
 
 with st.sidebar:
     st.caption(

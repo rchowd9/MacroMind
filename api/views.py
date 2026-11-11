@@ -10,7 +10,7 @@ from django.db import IntegrityError
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from api.models import Food, Goal, MealEntry
+from api.models import Food, Goal, MealEntry, UserProfile
 
 
 def api_endpoint(view: Callable[..., JsonResponse]) -> Callable[..., JsonResponse]:
@@ -50,6 +50,13 @@ def goal_data(goal: Goal) -> dict[str, int]:
         "protein_goal": goal.protein_goal,
         "carbs_goal": goal.carbs_goal,
         "fats_goal": goal.fats_goal,
+    }
+
+
+def profile_data(profile: UserProfile) -> dict[str, float | None]:
+    return {
+        "weight_kg": float(profile.weight_kg) if profile.weight_kg is not None else None,
+        "height_cm": float(profile.height_cm) if profile.height_cm is not None else None,
     }
 
 
@@ -139,6 +146,29 @@ def goal(request: HttpRequest) -> JsonResponse:
     except (KeyError, ValueError) as error:
         return JsonResponse({"error": str(error)}, status=400)
     return JsonResponse(goal_data(current_goal))
+
+
+@api_endpoint
+def profile(request: HttpRequest) -> JsonResponse:
+    current_profile, _ = UserProfile.objects.get_or_create(pk=1)
+    if request.method == "GET":
+        return JsonResponse(profile_data(current_profile))
+    if request.method != "PUT":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+    try:
+        data = parse_body(request)
+        weight = decimal_value(data, "weight_kg", minimum=Decimal("1"))
+        height = decimal_value(data, "height_cm", minimum=Decimal("1"))
+        if weight > Decimal("500"):
+            raise ValueError("weight_kg must be at most 500.")
+        if height > Decimal("300"):
+            raise ValueError("height_cm must be at most 300.")
+        current_profile.weight_kg = weight
+        current_profile.height_cm = height
+        current_profile.save()
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=400)
+    return JsonResponse(profile_data(current_profile))
 
 
 @api_endpoint

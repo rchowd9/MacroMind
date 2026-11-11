@@ -27,6 +27,11 @@ class Goal(models.Model):
         verbose_name = "daily goal"
 
 
+class UserProfile(models.Model):
+    weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    height_cm = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+
 class MealEntry(models.Model):
     food = models.ForeignKey(Food, on_delete=models.PROTECT, related_name="meal_entries")
     quantity_grams = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0.01)])
