@@ -3,6 +3,7 @@ import json
 from django.test import TestCase, override_settings
 
 from api.models import Food, MealEntry
+from services.recommendation_service import recommend_protein_foods
 
 
 @override_settings(MACROMIND_API_TOKEN="test-token")
@@ -53,6 +54,26 @@ class MacroMindAPITests(TestCase):
         self.assertEqual(response.json()["totals"]["protein"], 8.45)
         self.assertEqual(len(self.client.get("/api/meals/?date=2026-11-09").json()), 1)
         self.assertEqual(len(self.client.get("/api/meals/?date=2026-11-10").json()), 0)
+
+    def test_list_meals_for_date_range(self) -> None:
+        MealEntry.objects.create(food=self.food, quantity_grams=100, date="2026-11-09")
+        MealEntry.objects.create(food=self.food, quantity_grams=100, date="2026-11-11")
+        response = self.client.get(
+            "/api/meals/?start_date=2026-11-09&end_date=2026-11-10"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+
+    def test_reject_incomplete_or_reversed_meal_date_range(self) -> None:
+        for query in (
+            "?start_date=2026-11-09",
+            "?start_date=2026-11-11&end_date=2026-11-09",
+            "?start_date=invalid&end_date=2026-11-09",
+        ):
+            with self.subTest(query=query):
+                self.assertEqual(
+                    self.client.get(f"/api/meals/{query}").status_code, 400
+                )
 
     def test_update_goal_and_reject_invalid_values(self) -> None:
         payload = {
@@ -105,3 +126,28 @@ class MacroMindAPITests(TestCase):
         response = self.client.delete(f"/api/meals/{meal.id}/")
         self.assertEqual(response.status_code, 204)
         self.assertFalse(MealEntry.objects.filter(pk=meal.id).exists())
+
+    def test_protein_recommendations_fit_remaining_goals_and_rank_density(self) -> None:
+        foods = [
+            {"id": 1, "name": "Chicken", "calories_per_100g": 165, "protein_per_100g": 31},
+            {"id": 2, "name": "Tofu", "calories_per_100g": 144, "protein_per_100g": 17},
+        ]
+        recommendations = recommend_protein_foods(
+            foods, calories_remaining=100, protein_remaining=20
+        )
+        self.assertEqual(recommendations[0]["food"]["name"], "Chicken")
+        for recommendation in recommendations:
+            self.assertLessEqual(recommendation["calories"], 100)
+            self.assertLessEqual(recommendation["protein"], 20)
+            self.assertLessEqual(recommendation["quantity_grams"], 100)
+
+    def test_protein_recommendations_stop_when_a_goal_is_met(self) -> None:
+        foods = [
+            {"id": 1, "name": "Chicken", "calories_per_100g": 165, "protein_per_100g": 31}
+        ]
+        self.assertEqual(
+            recommend_protein_foods(
+                foods, calories_remaining=100, protein_remaining=0
+            ),
+            [],
+        )

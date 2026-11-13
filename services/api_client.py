@@ -35,6 +35,16 @@ class MacroMindAPI:
     def list_meals(self, tracking_date: date) -> list[dict[str, Any]]:
         return self._request("GET", "/api/meals/", params={"date": tracking_date.isoformat()})
 
+    def list_meals_between(self, start_date: date, end_date: date) -> list[dict[str, Any]]:
+        return self._request(
+            "GET",
+            "/api/meals/",
+            params={
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+            },
+        )
+
     def create_meal(self, food_id: int, quantity_grams: float, tracking_date: date) -> dict[str, Any]:
         return self._request(
             "POST",

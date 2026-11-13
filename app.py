@@ -1,10 +1,11 @@
 import os
-from datetime import date
+from datetime import date, timedelta
 
 import streamlit as st
 from streamlit.errors import StreamlitSecretNotFoundError
 
 from services.api_client import APIError, MacroMindAPI
+from services.recommendation_service import recommend_protein_foods
 
 
 def setting(name: str, default: str = "") -> str:
@@ -65,6 +66,8 @@ with st.sidebar:
 try:
     foods = api.list_foods()
     meals = api.list_meals(selected_date)
+    week_start = selected_date - timedelta(days=6)
+    weekly_meals = api.list_meals_between(week_start, selected_date)
 except APIError as error:
     st.error(f"Could not load MacroMind data: {error}")
     st.info(
@@ -106,6 +109,12 @@ protein = sum(meal["totals"]["protein"] for meal in meals)
 carbs = sum(meal["totals"]["carbs"] for meal in meals)
 fats = sum(meal["totals"]["fats"] for meal in meals)
 remaining = goal["calorie_goal"] - calories
+protein_remaining = goal["protein_goal"] - protein
+protein_recommendations = recommend_protein_foods(
+    foods,
+    calories_remaining=max(remaining, 0),
+    protein_remaining=max(protein_remaining, 0),
+)
 
 calorie_col, protein_col, carbs_col, fats_col = st.columns(4)
 calorie_col.metric(
@@ -118,10 +127,39 @@ carbs_col.metric("Carbohydrates", f"{carbs:.1f} g", f"of {goal['carbs_goal']} g"
 fats_col.metric("Fat", f"{fats:.1f} g", f"of {goal['fats_goal']} g")
 st.progress(min(calories / goal["calorie_goal"], 1.0), text="Daily calorie goal")
 
-log_tab, foods_tab, meals_tab = st.tabs(["Log food", "Food library", "Today's meals"])
+log_tab, foods_tab, meals_tab, insights_tab = st.tabs(
+    ["Log food", "Food library", "Today's meals", "Weekly insights"]
+)
 
 with log_tab:
     st.subheader("Add food to your day")
+    st.markdown("#### Smart protein picks")
+    if protein_recommendations:
+        st.caption("Portions are sized to fit your remaining calorie and protein goals.")
+        for recommendation in protein_recommendations:
+            food = recommendation["food"]
+            recommendation_col, action_col = st.columns([3, 1])
+            recommendation_col.markdown(
+                f"**{food['name']}** · {recommendation['quantity_grams']:.0f} g"
+            )
+            recommendation_col.caption(
+                f"{recommendation['calories']:.0f} kcal · "
+                f"{recommendation['protein']:.1f} g protein"
+            )
+            if action_col.button(
+                "Log pick", key=f"recommend_{food['id']}", use_container_width=True
+            ):
+                try:
+                    api.create_meal(
+                        food["id"], recommendation["quantity_grams"], selected_date
+                    )
+                    st.success(f"Added {food['name']} to your day.")
+                    st.rerun()
+                except APIError as error:
+                    st.error(f"Could not add food: {error}")
+    else:
+        st.caption("Your calorie or protein goal is met, or no suitable foods are saved yet.")
+
     if foods:
         food_options = {food["name"]: food for food in foods}
         with st.form("log_food_form"):
@@ -205,3 +243,43 @@ with meals_tab:
                     st.rerun()
                 except APIError as error:
                     st.error(f"Could not remove meal: {error}")
+
+with insights_tab:
+    st.subheader(f"Seven-day nutrition trend through {selected_date:%B %d}")
+    daily_totals = {
+        (week_start + timedelta(days=offset)).isoformat(): {
+            "calories": 0.0,
+            "protein": 0.0,
+            "carbs": 0.0,
+            "fats": 0.0,
+        }
+        for offset in range(7)
+    }
+    for meal in weekly_meals:
+        day_totals = daily_totals[meal["date"]]
+        for nutrient in day_totals:
+            day_totals[nutrient] += meal["totals"][nutrient]
+
+    trend_rows = [
+        {
+            "Date": date.fromisoformat(day).strftime("%a %b %d"),
+            "Calories": totals["calories"],
+            "Protein (g)": totals["protein"],
+            "Carbs (g)": totals["carbs"],
+            "Fat (g)": totals["fats"],
+        }
+        for day, totals in daily_totals.items()
+    ]
+    average_calories = sum(row["Calories"] for row in trend_rows) / 7
+    days_on_target = sum(
+        row["Calories"] > 0 and row["Calories"] <= goal["calorie_goal"]
+        for row in trend_rows
+    )
+    average_protein = sum(row["Protein (g)"] for row in trend_rows) / 7
+
+    average_col, target_col, protein_average_col = st.columns(3)
+    average_col.metric("Average calories / day", f"{average_calories:,.0f} kcal")
+    target_col.metric("Days within calorie goal", f"{days_on_target} / 7")
+    protein_average_col.metric("Average protein / day", f"{average_protein:.1f} g")
+    st.bar_chart(trend_rows, x="Date", y="Calories")
+    st.dataframe(trend_rows, hide_index=True, use_container_width=True)

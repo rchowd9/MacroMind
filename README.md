@@ -44,6 +44,8 @@ The app is available at `http://localhost:8501`. For a different backend address
 - Log a gram-based portion for a selected day and remove entries.
 - Set daily calorie and macro goals; view intake, remaining calories, and goal progress.
 - Save personal weight (kg) and height (cm) in the sidebar.
+- Get portion-sized, high-protein food picks that fit remaining calorie and protein goals.
+- Review a seven-day calorie trend with average intake, goal-range days, and daily macros.
 - Store data in Django's SQLite database.
 
 ## API
@@ -56,7 +58,7 @@ All API routes except the health check require `Authorization: Bearer <MACROMIND
 | GET, POST | `/api/foods/` | List or add foods |
 | GET, PUT | `/api/goal/` | Read or update the daily goal |
 | GET, PUT | `/api/profile/` | Read or update personal weight (kg) and height (cm) |
-| GET, POST | `/api/meals/` | List meals (`?date=YYYY-MM-DD`) or log a meal |
+| GET, POST | `/api/meals/` | List meals (`?date=YYYY-MM-DD` or `?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD`) or log a meal |
 | DELETE | `/api/meals/<id>/` | Remove a meal entry |
 
 ## Deployment

@@ -174,6 +174,30 @@ def profile(request: HttpRequest) -> JsonResponse:
 @api_endpoint
 def meals(request: HttpRequest) -> JsonResponse:
     if request.method == "GET":
+        if "start_date" in request.GET or "end_date" in request.GET:
+            raw_start = request.GET.get("start_date", "")
+            raw_end = request.GET.get("end_date", "")
+            if not raw_start or not raw_end:
+                return JsonResponse(
+                    {"error": "Both start_date and end_date are required."}, status=400
+                )
+            try:
+                start_date = date.fromisoformat(raw_start)
+                end_date = date.fromisoformat(raw_end)
+            except ValueError:
+                return JsonResponse(
+                    {"error": "start_date and end_date must use YYYY-MM-DD format."},
+                    status=400,
+                )
+            if start_date > end_date:
+                return JsonResponse(
+                    {"error": "start_date must be on or before end_date."}, status=400
+                )
+            entries = MealEntry.objects.filter(
+                date__range=(start_date, end_date)
+            ).select_related("food")
+            return JsonResponse([meal_data(meal) for meal in entries], safe=False)
+
         raw_date = request.GET.get("date", date.today().isoformat())
         try:
             tracking_date = date.fromisoformat(raw_date)
