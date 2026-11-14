@@ -14,16 +14,18 @@ class RecommendationService:
             return []
 
         goal = getattr(user, "goal", None)
-        if goal is None:
-            return []
+        if isinstance(goal, dict):
+            calorie_goal = goal.get("calorie_goal")
+            protein_goal = goal.get("protein_goal")
+        else:
+            calorie_goal = getattr(goal, "calorie_goal", None)
+            protein_goal = getattr(goal, "protein_goal", None)
 
-        calorie_goal = getattr(goal, "calorie_goal", None)
-        protein_goal = getattr(goal, "protein_goal", None)
         if calorie_goal is None or protein_goal is None:
             return []
 
-        total_calories = getattr(user, "total_calories", lambda: 0)()
-        total_protein = getattr(user, "total_protein", lambda: 0)()
+        total_calories = getattr(user, "total_calories", lambda: 0)() if not isinstance(user, dict) else user.get("total_calories", 0)
+        total_protein = getattr(user, "total_protein", lambda: 0)() if not isinstance(user, dict) else user.get("total_protein", 0)
         remaining_calories = max(float(calorie_goal) - float(total_calories), 0.0)
         remaining_protein = max(float(protein_goal) - float(total_protein), 0.0)
 

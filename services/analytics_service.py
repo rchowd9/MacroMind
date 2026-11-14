@@ -2,7 +2,10 @@ class AnalyticsService:
 
     @staticmethod
     def macro_breakdown(user):
-        meals = getattr(user, "meals", []) or []
+        if isinstance(user, dict):
+            meals = user.get("meals", []) or []
+        else:
+            meals = getattr(user, "meals", []) or []
 
         protein = 0.0
         carbs = 0.0
