@@ -222,7 +222,6 @@ with foods_tab:
         removable_foods = {
             food["name"]: food
             for food in foods
-            if not any(meal["food"]["id"] == food["id"] for meal in weekly_meals)
         }
         if removable_foods:
             remove_name = st.selectbox(
