@@ -1,4 +1,6 @@
 import os
+import csv
+from io import StringIO
 from datetime import date, timedelta
 
 import streamlit as st
@@ -205,8 +207,7 @@ with foods_tab:
     st.subheader("Food library")
     st.caption("Nutrition values are per 100 g. Add or adjust foods to match your own labels.")
     if foods:
-        st.dataframe(
-            [
+        food_rows = [
                 {
                     "Food": food["name"],
                     "Calories": food["calories_per_100g"],
@@ -215,10 +216,29 @@ with foods_tab:
                     "Fat (g)": food["fats_per_100g"],
                 }
                 for food in foods
-            ],
-            hide_index=True,
-            use_container_width=True,
-        )
+            ]
+        st.dataframe(food_rows, hide_index=True, use_container_width=True)
+        st.subheader("Remove a food")
+        removable_foods = {
+            food["name"]: food
+            for food in foods
+            if not any(meal["food"]["id"] == food["id"] for meal in weekly_meals)
+        }
+        if removable_foods:
+            remove_name = st.selectbox(
+                "Food to remove",
+                list(removable_foods),
+                key="remove_food_name",
+            )
+            if st.button("Delete unused food", type="secondary"):
+                try:
+                    api.delete_food(removable_foods[remove_name]["id"])
+                    st.success(f"Removed {remove_name} from the food library.")
+                    st.rerun()
+                except APIError as error:
+                    st.error(f"Could not remove food: {error}")
+        else:
+            st.caption("No unused foods are available to remove.")
     else:
         st.info("Your food library is empty.")
 
@@ -283,3 +303,17 @@ with insights_tab:
     protein_average_col.metric("Average protein / day", f"{average_protein:.1f} g")
     st.bar_chart(trend_rows, x="Date", y="Calories")
     st.dataframe(trend_rows, hide_index=True, use_container_width=True)
+
+    csv_buffer = StringIO()
+    csv_writer = csv.DictWriter(
+        csv_buffer,
+        fieldnames=["Date", "Calories", "Protein (g)", "Carbs (g)", "Fat (g)"],
+    )
+    csv_writer.writeheader()
+    csv_writer.writerows(trend_rows)
+    st.download_button(
+        "Download seven-day report",
+        data=csv_buffer.getvalue(),
+        file_name=f"macromind_nutrition_{week_start.isoformat()}_{selected_date.isoformat()}.csv",
+        mime="text/csv",
+    )

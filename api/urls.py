@@ -6,6 +6,7 @@ from api import views
 urlpatterns = [
     path("api/health/", views.health, name="health"),
     path("api/foods/", views.foods, name="foods"),
+    path("api/foods/<int:food_id>/", views.food_detail, name="food-detail"),
     path("api/goal/", views.goal, name="goal"),
     path("api/profile/", views.profile, name="profile"),
     path("api/meals/", views.meals, name="meals"),

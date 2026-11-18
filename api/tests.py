@@ -127,6 +127,25 @@ class MacroMindAPITests(TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertFalse(MealEntry.objects.filter(pk=meal.id).exists())
 
+    def test_delete_unused_food_and_reject_used_food(self) -> None:
+        unused = Food.objects.create(
+            name="Banana",
+            calories_per_100g=89,
+            protein_per_100g=1.1,
+            carbs_per_100g=22.8,
+            fats_per_100g=0.3,
+        )
+        response = self.client.delete(f"/api/foods/{unused.id}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Food.objects.filter(pk=unused.id).exists())
+
+        MealEntry.objects.create(
+            food=self.food, quantity_grams=100, date="2026-11-09"
+        )
+        response = self.client.delete(f"/api/foods/{self.food.id}/")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(Food.objects.filter(pk=self.food.id).exists())
+
     def test_protein_recommendations_fit_remaining_goals_and_rank_density(self) -> None:
         foods = [
             {"id": 1, "name": "Chicken", "calories_per_100g": 165, "protein_per_100g": 31},

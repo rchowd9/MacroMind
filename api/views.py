@@ -221,6 +221,23 @@ def meals(request: HttpRequest) -> JsonResponse:
 
 
 @api_endpoint
+def food_detail(request: HttpRequest, food_id: int) -> JsonResponse:
+    if request.method != "DELETE":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+    try:
+        food = Food.objects.get(pk=food_id)
+    except Food.DoesNotExist:
+        return JsonResponse({"error": "Food not found."}, status=404)
+    if food.meal_entries.exists():
+        return JsonResponse(
+            {"error": "This food is used by logged meals and cannot be deleted."},
+            status=409,
+        )
+    food.delete()
+    return JsonResponse({}, status=204)
+
+
+@api_endpoint
 def meal_detail(request: HttpRequest, meal_id: int) -> JsonResponse:
     if request.method != "DELETE":
         return JsonResponse({"error": "Method not allowed."}, status=405)

@@ -20,6 +20,9 @@ class MacroMindAPI:
     def create_food(self, food: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/api/foods/", json=food)
 
+    def delete_food(self, food_id: int) -> None:
+        self._request("DELETE", f"/api/foods/{food_id}/")
+
     def get_goal(self) -> dict[str, Any]:
         return self._request("GET", "/api/goal/")
 
