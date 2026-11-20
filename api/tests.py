@@ -2,7 +2,7 @@ import json
 
 from django.test import TestCase, override_settings
 
-from api.models import Food, MealEntry
+from api.models import Food, MealEntry, MealTemplate
 from services.recommendation_service import recommend_protein_foods
 
 
@@ -170,3 +170,57 @@ class MacroMindAPITests(TestCase):
             ),
             [],
         )
+
+    def test_weekly_calorie_goal_defaults_to_daily_goal_and_can_be_updated(self) -> None:
+        response = self.client.get(
+            "/api/weekly-calorie-goal/?week_start=2026-11-11"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["week_start"], "2026-11-09")
+        self.assertEqual(response.json()["calorie_goal"], 14000)
+
+        response = self.client.put(
+            "/api/weekly-calorie-goal/",
+            data=json.dumps(
+                {"week_start": "2026-11-11", "calorie_goal": 12500}
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["week_start"], "2026-11-09")
+        self.assertEqual(response.json()["calorie_goal"], 12500)
+
+    def test_create_list_apply_and_delete_meal_template(self) -> None:
+        apple = Food.objects.create(
+            name="Apple",
+            calories_per_100g=52,
+            protein_per_100g=0.3,
+            carbs_per_100g=13.8,
+            fats_per_100g=0.2,
+        )
+        response = self.client.post(
+            "/api/meal-templates/",
+            data=json.dumps(
+                {
+                    "name": "Breakfast",
+                    "items": [
+                        {"food_id": self.food.id, "quantity_grams": 50},
+                        {"food_id": apple.id, "quantity_grams": 200},
+                    ],
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        template = response.json()
+        self.assertEqual(template["name"], "Breakfast")
+        self.assertEqual(len(template["items"]), 2)
+        self.assertEqual(template["totals"]["calories"], 298.5)
+
+        response = self.client.get("/api/meal-templates/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+
+        response = self.client.delete(f"/api/meal-templates/{template['id']}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(MealTemplate.objects.filter(pk=template["id"]).exists())

@@ -48,6 +48,8 @@ The app is available at `http://localhost:8501`. For a different backend address
 - Review a seven-day calorie trend with average intake, goal-range days, and daily macros.
 - Remove foods that have never been used in a meal log.
 - Download the seven-day nutrition trend as a CSV report.
+- Set a calorie budget for any seven-day period and track it in weekly insights.
+- Build reusable meal templates from saved foods and apply them to a tracking date.
 - Store data in Django's SQLite database.
 
 ## API
@@ -63,6 +65,9 @@ All API routes except the health check require `Authorization: Bearer <MACROMIND
 | GET, POST | `/api/meals/` | List meals (`?date=YYYY-MM-DD` or `?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD`) or log a meal |
 | DELETE | `/api/foods/<id>/` | Remove an unused food |
 | DELETE | `/api/meals/<id>/` | Remove a meal entry |
+| GET, PUT | `/api/weekly-calorie-goal/?week_start=YYYY-MM-DD` | Read or update a seven-day calorie budget |
+| GET, POST | `/api/meal-templates/` | List or create reusable meal templates |
+| DELETE | `/api/meal-templates/<id>/` | Remove a meal template |
 
 ## Deployment
 
