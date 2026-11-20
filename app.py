@@ -154,8 +154,8 @@ carbs_col.metric("Carbohydrates", f"{carbs:.1f} g", f"of {goal['carbs_goal']} g"
 fats_col.metric("Fat", f"{fats:.1f} g", f"of {goal['fats_goal']} g")
 st.progress(min(calories / goal["calorie_goal"], 1.0), text="Daily calorie goal")
 
-log_tab, foods_tab, meals_tab, insights_tab = st.tabs(
-    ["Log food", "Food library", "Today's meals", "Weekly insights"]
+log_tab, foods_tab, meals_tab, templates_tab, insights_tab = st.tabs(
+    ["Log food", "Food library", "Today's meals", "Meal templates", "Weekly insights"]
 )
 
 with log_tab:
