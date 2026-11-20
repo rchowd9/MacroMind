@@ -436,7 +436,7 @@ with insights_tab:
     )
     st.progress(
         min(weekly_calories / weekly_goal["calorie_goal"], 1.0),
-        text=f"0 of {weekly_goal['calorie_goal']:,.0f} kcal budgeted",
+        text=f"{weekly_calories:,.0f} of {weekly_goal['calorie_goal']:,.0f} kcal budgeted",
     )
     st.bar_chart(trend_rows, x="Date", y="Calories")
     st.dataframe(trend_rows, hide_index=True, use_container_width=True)
