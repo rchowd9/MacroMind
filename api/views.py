@@ -1,6 +1,6 @@
 import hmac
 import json
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 from typing import Any, Callable
@@ -275,7 +275,7 @@ def weekly_calorie_goal(request: HttpRequest) -> JsonResponse:
         week_start = date.fromisoformat(str(raw_week_start))
     except ValueError:
         return JsonResponse({"error": "week_start must use YYYY-MM-DD format."}, status=400)
-    week_start -= __import__("datetime").timedelta(days=week_start.weekday())
+    week_start -= timedelta(days=week_start.weekday())
 
     if request.method == "GET":
         weekly_goal = WeeklyCalorieGoal.objects.filter(week_start=week_start).first()
