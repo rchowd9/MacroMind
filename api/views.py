@@ -10,7 +10,15 @@ from django.db import IntegrityError
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from api.models import Food, Goal, MealEntry, UserProfile
+from api.models import (
+    Food,
+    Goal,
+    MealEntry,
+    MealTemplate,
+    MealTemplateItem,
+    UserProfile,
+    WeeklyCalorieGoal,
+)
 
 
 def api_endpoint(view: Callable[..., JsonResponse]) -> Callable[..., JsonResponse]:
@@ -246,4 +254,145 @@ def meal_detail(request: HttpRequest, meal_id: int) -> JsonResponse:
     except MealEntry.DoesNotExist:
         return JsonResponse({"error": "Meal entry not found."}, status=404)
     meal.delete()
+    return JsonResponse({}, status=204)
+
+
+@api_endpoint
+def weekly_calorie_goal(request: HttpRequest) -> JsonResponse:
+    raw_week_start = request.GET.get("week_start") if request.method == "GET" else None
+    if request.method == "PUT":
+        try:
+            data = parse_body(request)
+            raw_week_start = data["week_start"]
+            calorie_goal = data["calorie_goal"]
+            if isinstance(calorie_goal, bool) or not str(calorie_goal).isdigit() or int(calorie_goal) <= 0:
+                raise ValueError("calorie_goal must be a positive whole number.")
+        except (KeyError, ValueError) as error:
+            return JsonResponse({"error": str(error)}, status=400)
+    if not raw_week_start:
+        return JsonResponse({"error": "week_start is required."}, status=400)
+    try:
+        week_start = date.fromisoformat(str(raw_week_start))
+    except ValueError:
+        return JsonResponse({"error": "week_start must use YYYY-MM-DD format."}, status=400)
+    week_start -= __import__("datetime").timedelta(days=week_start.weekday())
+
+    if request.method == "GET":
+        weekly_goal = WeeklyCalorieGoal.objects.filter(week_start=week_start).first()
+        if weekly_goal is None:
+            daily_goal, _ = Goal.objects.get_or_create(pk=1)
+            return JsonResponse(
+                {
+                    "week_start": week_start.isoformat(),
+                    "calorie_goal": daily_goal.calorie_goal * 7,
+                }
+            )
+        return JsonResponse(
+            {
+                "week_start": weekly_goal.week_start.isoformat(),
+                "calorie_goal": weekly_goal.calorie_goal,
+            }
+        )
+    if request.method != "PUT":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+
+    weekly_goal, _ = WeeklyCalorieGoal.objects.update_or_create(
+        week_start=week_start,
+        defaults={"calorie_goal": int(calorie_goal)},
+    )
+    return JsonResponse(
+        {
+            "week_start": weekly_goal.week_start.isoformat(),
+            "calorie_goal": weekly_goal.calorie_goal,
+        }
+    )
+
+
+def meal_template_data(template: MealTemplate) -> dict[str, Any]:
+    items = []
+    calories = protein = carbs = fats = 0.0
+    for item in template.items.select_related("food"):
+        factor = item.quantity_grams / Decimal("100")
+        food = item.food
+        item_calories = float(food.calories_per_100g * factor)
+        item_protein = float(food.protein_per_100g * factor)
+        item_carbs = float(food.carbs_per_100g * factor)
+        item_fats = float(food.fats_per_100g * factor)
+        calories += item_calories
+        protein += item_protein
+        carbs += item_carbs
+        fats += item_fats
+        items.append(
+            {
+                "food": food_data(food),
+                "quantity_grams": float(item.quantity_grams),
+            }
+        )
+    return {
+        "id": template.id,
+        "name": template.name,
+        "items": items,
+        "totals": {
+            "calories": calories,
+            "protein": protein,
+            "carbs": carbs,
+            "fats": fats,
+        },
+    }
+
+
+@api_endpoint
+def meal_templates(request: HttpRequest) -> JsonResponse:
+    if request.method == "GET":
+        return JsonResponse(
+            [meal_template_data(template) for template in MealTemplate.objects.all()],
+            safe=False,
+        )
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+    try:
+        data = parse_body(request)
+        name = data.get("name")
+        items = data.get("items")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("name is required.")
+        if not isinstance(items, list) or not items:
+            raise ValueError("At least one template item is required.")
+
+        template = MealTemplate.objects.create(name=name.strip())
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError("Each template item must be an object.")
+            food = Food.objects.get(pk=int(item["food_id"]))
+            quantity = decimal_value(item, "quantity_grams", minimum=Decimal("0.01"))
+            MealTemplateItem.objects.create(
+                template=template,
+                food=food,
+                quantity_grams=quantity,
+            )
+    except Food.DoesNotExist:
+        if "template" in locals():
+            template.delete()
+        return JsonResponse({"error": "A template item references an unknown food."}, status=400)
+    except IntegrityError:
+        if "template" in locals():
+            template.delete()
+        return JsonResponse({"error": "A meal template with that name already exists."}, status=400)
+    except (KeyError, TypeError, ValueError) as error:
+        if "template" in locals():
+            template.delete()
+        message = str(error) if str(error) else "Provide valid template items."
+        return JsonResponse({"error": message}, status=400)
+    return JsonResponse(meal_template_data(template), status=201)
+
+
+@api_endpoint
+def meal_template_detail(request: HttpRequest, template_id: int) -> JsonResponse:
+    if request.method != "DELETE":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+    try:
+        template = MealTemplate.objects.get(pk=template_id)
+    except MealTemplate.DoesNotExist:
+        return JsonResponse({"error": "Meal template not found."}, status=404)
+    template.delete()
     return JsonResponse({}, status=204)
