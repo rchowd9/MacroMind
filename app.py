@@ -64,12 +64,30 @@ with st.sidebar:
             step=0.1,
         )
         save_profile = st.form_submit_button("Save measurements", use_container_width=True)
+    with st.form("weekly_goal_form"):
+        st.subheader("Weekly calorie budget")
+        week_start = selected_date - timedelta(days=6)
+        try:
+            weekly_goal = api.get_weekly_calorie_goal(week_start)
+        except APIError as error:
+            st.error(f"Could not load weekly goal: {error}")
+            weekly_goal = {"week_start": week_start.isoformat(), "calorie_goal": goal["calorie_goal"] * 7}
+        weekly_calorie_goal = st.number_input(
+            "Calories for 7-day period",
+            min_value=1,
+            max_value=70000,
+            value=weekly_goal["calorie_goal"],
+            step=500,
+        )
+        save_weekly_goal = st.form_submit_button("Save weekly calorie budget", use_container_width=True)
 
 try:
     foods = api.list_foods()
     meals = api.list_meals(selected_date)
     week_start = selected_date - timedelta(days=6)
     weekly_meals = api.list_meals_between(week_start, selected_date)
+    meal_templates = api.list_meal_templates()
+    weekly_goal = api.get_weekly_calorie_goal(week_start)
 except APIError as error:
     st.error(f"Could not load MacroMind data: {error}")
     st.info(
