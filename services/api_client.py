@@ -62,6 +62,32 @@ class MacroMindAPI:
     def delete_meal(self, meal_id: int) -> None:
         self._request("DELETE", f"/api/meals/{meal_id}/")
 
+    def get_weekly_calorie_goal(self, week_start: date) -> dict[str, Any]:
+        return self._request(
+            "GET",
+            "/api/weekly-calorie-goal/",
+            params={"week_start": week_start.isoformat()},
+        )
+
+    def update_weekly_calorie_goal(self, week_start: date, calorie_goal: int) -> dict[str, Any]:
+        return self._request(
+            "PUT",
+            "/api/weekly-calorie-goal/",
+            json={
+                "week_start": week_start.isoformat(),
+                "calorie_goal": calorie_goal,
+            },
+        )
+
+    def list_meal_templates(self) -> list[dict[str, Any]]:
+        return self._request("GET", "/api/meal-templates/")
+
+    def create_meal_template(self, template: dict[str, Any]) -> dict[str, Any]:
+        return self._request("POST", "/api/meal-templates/", json=template)
+
+    def delete_meal_template(self, template_id: int) -> None:
+        self._request("DELETE", f"/api/meal-templates/{template_id}/")
+
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
         try:
