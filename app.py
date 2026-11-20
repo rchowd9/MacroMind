@@ -288,6 +288,107 @@ with meals_tab:
                 except APIError as error:
                     st.error(f"Could not remove meal: {error}")
 
+with templates_tab:
+    st.subheader("Reusable meal templates")
+    if "template_draft" not in st.session_state:
+        st.session_state.template_draft = []
+
+    if foods:
+        food_options = {food["name"]: food for food in foods}
+        draft_col, quantity_col = st.columns([3, 1])
+        draft_food_name = draft_col.selectbox(
+            "Food for template",
+            list(food_options),
+            key="template_draft_food",
+        )
+        draft_quantity = quantity_col.number_input(
+            "Amount (grams)",
+            min_value=1.0,
+            max_value=5000.0,
+            value=100.0,
+            step=10.0,
+            key="template_draft_quantity",
+        )
+        if st.button("Add item to draft", use_container_width=True):
+            st.session_state.template_draft.append(
+                {
+                    "food_id": food_options[draft_food_name]["id"],
+                    "quantity_grams": draft_quantity,
+                    "name": draft_food_name,
+                }
+            )
+            st.rerun()
+
+    if st.session_state.template_draft:
+        st.caption("Draft items")
+        for index, item in enumerate(st.session_state.template_draft):
+            draft_item_col, remove_draft_col = st.columns([4, 1])
+            draft_item_col.markdown(f"{item['name']} — {item['quantity_grams']:g} g")
+            if remove_draft_col.button("Remove", key=f"remove_template_draft_{index}"):
+                st.session_state.template_draft.pop(index)
+                st.rerun()
+
+        template_name = st.text_input("Template name", key="template_name")
+        if st.button("Save template", type="primary"):
+            if not template_name.strip():
+                st.error("Enter a template name.")
+            else:
+                try:
+                    api.create_meal_template(
+                        {
+                            "name": template_name,
+                            "items": [
+                                {
+                                    "food_id": item["food_id"],
+                                    "quantity_grams": item["quantity_grams"],
+                                }
+                                for item in st.session_state.template_draft
+                            ],
+                        }
+                    )
+                    st.session_state.template_draft = []
+                    st.success(f"Saved template {template_name}.")
+                    st.rerun()
+                except APIError as error:
+                    st.error(f"Could not save template: {error}")
+    else:
+        st.caption("Add at least one food item to create a template.")
+
+    if meal_templates:
+        st.divider()
+        for template in meal_templates:
+            with st.container(border=True):
+                template_col, apply_col, delete_col = st.columns([3, 1, 1])
+                template_col.markdown(f"**{template['name']}**")
+                item_summary = ", ".join(
+                    f"{item['food']['name']} {item['quantity_grams']:g} g"
+                    for item in template["items"]
+                )
+                template_col.caption(
+                    f"{item_summary} · {template['totals']['calories']:.0f} kcal"
+                )
+                if apply_col.button("Apply", key=f"apply_template_{template['id']}"):
+                    try:
+                        for item in template["items"]:
+                            api.create_meal(
+                                item["food"]["id"],
+                                item["quantity_grams"],
+                                selected_date,
+                            )
+                        st.success(f"Applied {template['name']} to {selected_date.isoformat()}.")
+                        st.rerun()
+                    except APIError as error:
+                        st.error(f"Could not apply template: {error}")
+                if delete_col.button("Delete", key=f"delete_template_{template['id']}"):
+                    try:
+                        api.delete_meal_template(template["id"])
+                        st.success(f"Deleted template {template['name']}.")
+                        st.rerun()
+                    except APIError as error:
+                        st.error(f"Could not delete template: {error}")
+    else:
+        st.info("No meal templates saved yet.")
+
 with insights_tab:
     st.subheader(f"Seven-day nutrition trend through {selected_date:%B %d}")
     daily_totals = {
@@ -325,6 +426,18 @@ with insights_tab:
     average_col.metric("Average calories / day", f"{average_calories:,.0f} kcal")
     target_col.metric("Days within calorie goal", f"{days_on_target} / 7")
     protein_average_col.metric("Average protein / day", f"{average_protein:.1f} g")
+    weekly_calories = sum(row["Calories"] for row in trend_rows)
+    weekly_remaining = weekly_goal["calorie_goal"] - weekly_calories
+    weekly_col, weekly_remaining_col = st.columns(2)
+    weekly_col.metric("Seven-day calories", f"{weekly_calories:,.0f} kcal")
+    weekly_remaining_col.metric(
+        "Weekly calorie budget",
+        f"{abs(weekly_remaining):,.0f} kcal {'remaining' if weekly_remaining >= 0 else 'over'}",
+    )
+    st.progress(
+        min(weekly_calories / weekly_goal["calorie_goal"], 1.0),
+        text=f"0 of {weekly_goal['calorie_goal']:,.0f} kcal budgeted",
+    )
     st.bar_chart(trend_rows, x="Date", y="Calories")
     st.dataframe(trend_rows, hide_index=True, use_container_width=True)
 
