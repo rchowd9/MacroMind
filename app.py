@@ -117,6 +117,13 @@ if save_profile:
     except APIError as error:
         st.sidebar.error(f"Could not save measurements: {error}")
 
+if save_weekly_goal:
+    try:
+        weekly_goal = api.update_weekly_calorie_goal(week_start, int(weekly_calorie_goal))
+        st.sidebar.success("Weekly calorie budget saved.")
+    except APIError as error:
+        st.sidebar.error(f"Could not save weekly goal: {error}")
+
 with st.sidebar:
     st.caption(
         f"Current plan: {goal['calorie_goal']} kcal · "
