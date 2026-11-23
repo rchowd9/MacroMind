@@ -16,6 +16,9 @@ class MacroMindAPITests(TestCase):
             protein_per_100g=16.9,
             carbs_per_100g=66.3,
             fats_per_100g=6.9,
+            fiber_per_100g=10.6,
+            sugar_per_100g=0.99,
+            sodium_mg_per_100g=2,
         )
 
     def test_api_requires_token(self) -> None:
@@ -33,12 +36,18 @@ class MacroMindAPITests(TestCase):
                     "protein_per_100g": 0.3,
                     "carbs_per_100g": 13.8,
                     "fats_per_100g": 0.2,
+                    "fiber_per_100g": 2.4,
+                    "sugar_per_100g": 10.4,
+                    "sodium_mg_per_100g": 1,
                 }
             ),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["name"], "Apple")
+        self.assertEqual(response.json()["fiber_per_100g"], 2.4)
+        self.assertEqual(response.json()["sugar_per_100g"], 10.4)
+        self.assertEqual(response.json()["sodium_mg_per_100g"], 1)
         self.assertEqual(len(self.client.get("/api/foods/").json()), 2)
 
     def test_log_meal_calculates_nutrition_and_filters_by_date(self) -> None:
@@ -52,6 +61,9 @@ class MacroMindAPITests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["totals"]["calories"], 194.5)
         self.assertEqual(response.json()["totals"]["protein"], 8.45)
+        self.assertEqual(response.json()["totals"]["fiber"], 5.3)
+        self.assertAlmostEqual(response.json()["totals"]["sugar"], 0.495)
+        self.assertEqual(response.json()["totals"]["sodium_mg"], 1)
         self.assertEqual(len(self.client.get("/api/meals/?date=2026-11-09").json()), 1)
         self.assertEqual(len(self.client.get("/api/meals/?date=2026-11-10").json()), 0)
 
