@@ -211,6 +211,9 @@ with log_tab:
         new_protein = food_col2.number_input("Protein per 100 g (g)", min_value=0.0, max_value=100.0, value=5.0, step=0.5)
         new_carbs = food_col1.number_input("Carbohydrates per 100 g (g)", min_value=0.0, max_value=100.0, value=10.0, step=0.5)
         new_fats = food_col2.number_input("Fat per 100 g (g)", min_value=0.0, max_value=100.0, value=3.0, step=0.5)
+        new_fiber = food_col1.number_input("Fiber per 100 g (g)", min_value=0.0, max_value=100.0, value=2.0, step=0.5)
+        new_sugar = food_col2.number_input("Sugar per 100 g (g)", min_value=0.0, max_value=100.0, value=2.0, step=0.5)
+        new_sodium = st.number_input("Sodium per 100 g (mg)", min_value=0.0, max_value=100000.0, value=100.0, step=10.0)
         create_food = st.form_submit_button("Save food")
     if create_food:
         try:
@@ -221,6 +224,9 @@ with log_tab:
                     "protein_per_100g": new_protein,
                     "carbs_per_100g": new_carbs,
                     "fats_per_100g": new_fats,
+                    "fiber_per_100g": new_fiber,
+                    "sugar_per_100g": new_sugar,
+                    "sodium_mg_per_100g": new_sodium,
                 }
             )
             st.success(f"Saved {new_name}.")
@@ -239,6 +245,9 @@ with foods_tab:
                     "Protein (g)": food["protein_per_100g"],
                     "Carbs (g)": food["carbs_per_100g"],
                     "Fat (g)": food["fats_per_100g"],
+                    "Fiber (g)": food["fiber_per_100g"],
+                    "Sugar (g)": food["sugar_per_100g"],
+                    "Sodium (mg)": food["sodium_mg_per_100g"],
                 }
                 for food in foods
             ]
@@ -279,7 +288,10 @@ with meals_tab:
                 f"{meal['totals']['calories']:.0f} kcal · "
                 f"P {meal['totals']['protein']:.1f} g · "
                 f"C {meal['totals']['carbs']:.1f} g · "
-                f"F {meal['totals']['fats']:.1f} g"
+                f"F {meal['totals']['fats']:.1f} g · "
+                f"Fiber {meal['totals']['fiber']:.1f} g · "
+                f"Sugar {meal['totals']['sugar']:.1f} g · "
+                f"Sodium {meal['totals']['sodium_mg']:.0f} mg"
             )
             if action_col.button("Remove", key=f"remove_{meal['id']}"):
                 try:
@@ -397,6 +409,9 @@ with insights_tab:
             "protein": 0.0,
             "carbs": 0.0,
             "fats": 0.0,
+            "fiber": 0.0,
+            "sugar": 0.0,
+            "sodium_mg": 0.0,
         }
         for offset in range(7)
     }
@@ -412,6 +427,9 @@ with insights_tab:
             "Protein (g)": totals["protein"],
             "Carbs (g)": totals["carbs"],
             "Fat (g)": totals["fats"],
+            "Fiber (g)": totals["fiber"],
+            "Sugar (g)": totals["sugar"],
+            "Sodium (mg)": totals["sodium_mg"],
         }
         for day, totals in daily_totals.items()
     ]
@@ -444,7 +462,16 @@ with insights_tab:
     csv_buffer = StringIO()
     csv_writer = csv.DictWriter(
         csv_buffer,
-        fieldnames=["Date", "Calories", "Protein (g)", "Carbs (g)", "Fat (g)"],
+        fieldnames=[
+            "Date",
+            "Calories",
+            "Protein (g)",
+            "Carbs (g)",
+            "Fat (g)",
+            "Fiber (g)",
+            "Sugar (g)",
+            "Sodium (mg)",
+        ],
     )
     csv_writer.writeheader()
     csv_writer.writerows(trend_rows)

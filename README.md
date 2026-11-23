@@ -40,7 +40,7 @@ The app is available at `http://localhost:8501`. For a different backend address
 
 ## Features
 
-- Add foods with calories, protein, carbohydrates, and fat per 100 g.
+- Add foods with calories, protein, carbohydrates, fat, fiber, sugar, and sodium per 100 g.
 - Log a gram-based portion for a selected day and remove entries.
 - Set daily calorie and macro goals; view intake, remaining calories, and goal progress.
 - Save personal weight (kg) and height (cm) in the sidebar.
