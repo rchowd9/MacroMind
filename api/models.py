@@ -8,6 +8,9 @@ class Food(models.Model):
     protein_per_100g = models.DecimalField(max_digits=6, decimal_places=2, validators=[MinValueValidator(0)])
     carbs_per_100g = models.DecimalField(max_digits=6, decimal_places=2, validators=[MinValueValidator(0)])
     fats_per_100g = models.DecimalField(max_digits=6, decimal_places=2, validators=[MinValueValidator(0)])
+    fiber_per_100g = models.DecimalField(max_digits=6, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    sugar_per_100g = models.DecimalField(max_digits=6, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    sodium_mg_per_100g = models.DecimalField(max_digits=7, decimal_places=2, default=0, validators=[MinValueValidator(0)])
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

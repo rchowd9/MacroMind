@@ -49,6 +49,9 @@ def food_data(food: Food) -> dict[str, Any]:
         "protein_per_100g": float(food.protein_per_100g),
         "carbs_per_100g": float(food.carbs_per_100g),
         "fats_per_100g": float(food.fats_per_100g),
+        "fiber_per_100g": float(food.fiber_per_100g),
+        "sugar_per_100g": float(food.sugar_per_100g),
+        "sodium_mg_per_100g": float(food.sodium_mg_per_100g),
     }
 
 
@@ -81,6 +84,9 @@ def meal_data(meal: MealEntry) -> dict[str, Any]:
             "protein": float(food.protein_per_100g * factor),
             "carbs": float(food.carbs_per_100g * factor),
             "fats": float(food.fats_per_100g * factor),
+            "fiber": float(food.fiber_per_100g * factor),
+            "sugar": float(food.sugar_per_100g * factor),
+            "sodium_mg": float(food.sodium_mg_per_100g * factor),
         },
     }
 
@@ -122,6 +128,9 @@ def foods(request: HttpRequest) -> JsonResponse:
             protein_per_100g=decimal_value(data, "protein_per_100g"),
             carbs_per_100g=decimal_value(data, "carbs_per_100g"),
             fats_per_100g=decimal_value(data, "fats_per_100g"),
+            fiber_per_100g=decimal_value(data, "fiber_per_100g") if "fiber_per_100g" in data else Decimal("0"),
+            sugar_per_100g=decimal_value(data, "sugar_per_100g") if "sugar_per_100g" in data else Decimal("0"),
+            sodium_mg_per_100g=decimal_value(data, "sodium_mg_per_100g") if "sodium_mg_per_100g" in data else Decimal("0"),
         )
     except ValueError as error:
         return JsonResponse({"error": str(error)}, status=400)
@@ -310,7 +319,7 @@ def weekly_calorie_goal(request: HttpRequest) -> JsonResponse:
 
 def meal_template_data(template: MealTemplate) -> dict[str, Any]:
     items = []
-    calories = protein = carbs = fats = 0.0
+    calories = protein = carbs = fats = fiber = sugar = sodium_mg = 0.0
     for item in template.items.select_related("food"):
         factor = item.quantity_grams / Decimal("100")
         food = item.food
@@ -318,10 +327,16 @@ def meal_template_data(template: MealTemplate) -> dict[str, Any]:
         item_protein = float(food.protein_per_100g * factor)
         item_carbs = float(food.carbs_per_100g * factor)
         item_fats = float(food.fats_per_100g * factor)
+        item_fiber = float(food.fiber_per_100g * factor)
+        item_sugar = float(food.sugar_per_100g * factor)
+        item_sodium_mg = float(food.sodium_mg_per_100g * factor)
         calories += item_calories
         protein += item_protein
         carbs += item_carbs
         fats += item_fats
+        fiber += item_fiber
+        sugar += item_sugar
+        sodium_mg += item_sodium_mg
         items.append(
             {
                 "food": food_data(food),
@@ -337,6 +352,9 @@ def meal_template_data(template: MealTemplate) -> dict[str, Any]:
             "protein": protein,
             "carbs": carbs,
             "fats": fats,
+            "fiber": fiber,
+            "sugar": sugar,
+            "sodium_mg": sodium_mg,
         },
     }
 
