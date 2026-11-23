@@ -135,6 +135,9 @@ calories = sum(meal["totals"]["calories"] for meal in meals)
 protein = sum(meal["totals"]["protein"] for meal in meals)
 carbs = sum(meal["totals"]["carbs"] for meal in meals)
 fats = sum(meal["totals"]["fats"] for meal in meals)
+fiber = sum(meal["totals"]["fiber"] for meal in meals)
+sugar = sum(meal["totals"]["sugar"] for meal in meals)
+sodium_mg = sum(meal["totals"]["sodium_mg"] for meal in meals)
 remaining = goal["calorie_goal"] - calories
 protein_remaining = goal["protein_goal"] - protein
 protein_recommendations = recommend_protein_foods(
@@ -153,6 +156,10 @@ protein_col.metric("Protein", f"{protein:.1f} g", f"of {goal['protein_goal']} g"
 carbs_col.metric("Carbohydrates", f"{carbs:.1f} g", f"of {goal['carbs_goal']} g")
 fats_col.metric("Fat", f"{fats:.1f} g", f"of {goal['fats_goal']} g")
 st.progress(min(calories / goal["calorie_goal"], 1.0), text="Daily calorie goal")
+fiber_col, sugar_col, sodium_col = st.columns(3)
+fiber_col.metric("Fiber", f"{fiber:.1f} g")
+sugar_col.metric("Sugar", f"{sugar:.1f} g")
+sodium_col.metric("Sodium", f"{sodium_mg:,.0f} mg")
 
 log_tab, foods_tab, meals_tab, templates_tab, insights_tab = st.tabs(
     ["Log food", "Food library", "Today's meals", "Meal templates", "Weekly insights"]
@@ -377,7 +384,10 @@ with templates_tab:
                     for item in template["items"]
                 )
                 template_col.caption(
-                    f"{item_summary} · {template['totals']['calories']:.0f} kcal"
+                    f"{item_summary} · {template['totals']['calories']:.0f} kcal · "
+                    f"Fiber {template['totals']['fiber']:.1f} g · "
+                    f"Sugar {template['totals']['sugar']:.1f} g · "
+                    f"Sodium {template['totals']['sodium_mg']:.0f} mg"
                 )
                 if apply_col.button("Apply", key=f"apply_template_{template['id']}"):
                     try:
