@@ -2,7 +2,7 @@ import json
 
 from django.test import TestCase, override_settings
 
-from api.models import Food, MealEntry, MealTemplate
+from api.models import Food, MealEntry, MealTemplate, MealTemplateItem
 from services.recommendation_service import recommend_protein_foods
 
 
@@ -236,3 +236,31 @@ class MacroMindAPITests(TestCase):
         response = self.client.delete(f"/api/meal-templates/{template['id']}/")
         self.assertEqual(response.status_code, 204)
         self.assertFalse(MealTemplate.objects.filter(pk=template["id"]).exists())
+
+    def test_template_creation_rolls_back_when_an_item_is_invalid(self) -> None:
+        response = self.client.post(
+            "/api/meal-templates/",
+            data=json.dumps(
+                {
+                    "name": "Broken template",
+                    "items": [
+                        {"food_id": self.food.id, "quantity_grams": 50},
+                        {"food_id": 999999, "quantity_grams": 100},
+                    ],
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(MealTemplate.objects.filter(name="Broken template").exists())
+
+    def test_food_used_by_template_cannot_be_deleted(self) -> None:
+        template = MealTemplate.objects.create(name="Oats template")
+        MealTemplateItem.objects.create(
+            template=template,
+            food=self.food,
+            quantity_grams=50,
+        )
+        response = self.client.delete(f"/api/foods/{self.food.id}/")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(Food.objects.filter(pk=self.food.id).exists())

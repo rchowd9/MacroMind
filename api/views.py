@@ -6,7 +6,7 @@ from functools import wraps
 from typing import Any, Callable
 
 from django.conf import settings
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
@@ -245,9 +245,9 @@ def food_detail(request: HttpRequest, food_id: int) -> JsonResponse:
         food = Food.objects.get(pk=food_id)
     except Food.DoesNotExist:
         return JsonResponse({"error": "Food not found."}, status=404)
-    if food.meal_entries.exists():
+    if food.meal_entries.exists() or food.template_items.exists():
         return JsonResponse(
-            {"error": "This food is used by logged meals and cannot be deleted."},
+            {"error": "This food is used by logged meals or meal templates and cannot be deleted."},
             status=409,
         )
     food.delete()
@@ -377,17 +377,18 @@ def meal_templates(request: HttpRequest) -> JsonResponse:
         if not isinstance(items, list) or not items:
             raise ValueError("At least one template item is required.")
 
-        template = MealTemplate.objects.create(name=name.strip())
-        for item in items:
-            if not isinstance(item, dict):
-                raise ValueError("Each template item must be an object.")
-            food = Food.objects.get(pk=int(item["food_id"]))
-            quantity = decimal_value(item, "quantity_grams", minimum=Decimal("0.01"))
-            MealTemplateItem.objects.create(
-                template=template,
-                food=food,
-                quantity_grams=quantity,
-            )
+        with transaction.atomic():
+            template = MealTemplate.objects.create(name=name.strip())
+            for item in items:
+                if not isinstance(item, dict):
+                    raise ValueError("Each template item must be an object.")
+                food = Food.objects.get(pk=int(item["food_id"]))
+                quantity = decimal_value(item, "quantity_grams", minimum=Decimal("0.01"))
+                MealTemplateItem.objects.create(
+                    template=template,
+                    food=food,
+                    quantity_grams=quantity,
+                )
     except Food.DoesNotExist:
         if "template" in locals():
             template.delete()

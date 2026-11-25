@@ -43,6 +43,9 @@ class MealEntry(models.Model):
 
     class Meta:
         ordering = ["created_at", "id"]
+        indexes = [
+            models.Index(fields=["date", "created_at"], name="api_meal_day_created_idx"),
+        ]
 
 
 class WeeklyCalorieGoal(models.Model):
